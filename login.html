@@ -28,7 +28,7 @@
             width: 100%;
             transition: border-color 0.2s;
         }
-        input[type="text"]:focus, input[type="password"]:focus {
+        input[type="text"]:focus, input[type="number"]:focus {
             outline: none;
             border-color: #6366f1; /* Indigo focus border */
         }
@@ -96,6 +96,99 @@
         </div>
     </div>
 
-    <script src="login.js"></script>
+    <!-- Firebase SDK Imports -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, getDoc, collection, query, where, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Globalne varijable za Firebase instance
+        window.firebaseApp = null;
+        window.db = null;
+        window.auth = null;
+        window.currentUserId = null; // ID autentifikovanog korisnika
+
+        // Inicijalizacija Firebase-a
+        let firebaseConfig;
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+
+        // Proveri da li Canvas okruženje obezbeđuje Firebase konfiguraciju
+        if (typeof __firebase_config !== 'undefined' && __firebase_config !== null && __firebase_config !== '{}') {
+            try {
+                firebaseConfig = JSON.parse(__firebase_config);
+                console.log("Using Firebase config from Canvas environment.");
+            } catch (e) {
+                console.error("Error parsing __firebase_config from Canvas, falling back to hardcoded config:", e);
+                // Fallback to hardcoded if parsing fails
+                firebaseConfig = {
+                    apiKey: "AIzaSyDQjPwz2N89QZdiK7Cvoe-qEzb8yQHlFGE",
+                    authDomain: "golub-banka.firebaseapp.com",
+                    projectId: "golub-banka",
+                    storageBucket: "golub-banka.firebasestorage.app",
+                    messagingSenderId: "803437234437",
+                    appId: "1:803437234437:web:276eadf5dbb9d411864f6c",
+                    measurementId: "G-RSRZCKW0Q3"
+                };
+            }
+        } else {
+            // Ako Canvas ne obezbeđuje konfiguraciju, koristi hardkodovanu
+            console.log("Using hardcoded Firebase config (likely running outside Canvas).");
+            firebaseConfig = {
+                apiKey: "AIzaSyDQjPwz2N89QZdiK7Cvoe-qEzb8yQHlFGE",
+                authDomain: "golub-banka.firebaseapp.com",
+                projectId: "golub-banka",
+                storageBucket: "golub-banka.firebasestorage.app",
+                messagingSenderId: "803437234437",
+                appId: "1:803437234437:web:276eadf5dbb9d411864f6c",
+                measurementId: "G-RSRZCKW0Q3"
+            };
+        }
+
+        window.firebaseApp = initializeApp(firebaseConfig);
+        window.db = getFirestore(window.firebaseApp);
+        window.auth = getAuth(window.firebaseApp);
+
+        // Autentifikacija korisnika
+        if (initialAuthToken) {
+            signInWithCustomToken(window.auth, initialAuthToken)
+                .then((userCredential) => {
+                    window.currentUserId = userCredential.user.uid;
+                    console.log("Firebase authenticated with custom token:", window.currentUserId);
+                    // Sada kada je Firebase inicijalizovan i autentifikovan, učitaj login.js
+                    const script = document.createElement('script');
+                    script.src = 'login.js';
+                    document.body.appendChild(script);
+                })
+                .catch((error) => {
+                    console.error("Error signing in with custom token:", error);
+                    // Ako custom token ne radi, pokušaj anonimnu prijavu
+                    signInAnonymously(window.auth)
+                        .then((userCredential) => {
+                            window.currentUserId = userCredential.user.uid;
+                            console.log("Firebase authenticated anonymously:", window.currentUserId);
+                            const script = document.createElement('script');
+                            script.src = 'login.js';
+                            document.body.appendChild(script);
+                        })
+                        .catch((anonError) => {
+                            console.error("Error signing in anonymously:", anonError);
+                            alert("Greška pri inicijalizaciji autentifikacije. Aplikacija možda neće raditi ispravno.");
+                        });
+                });
+        } else {
+            signInAnonymously(window.auth)
+                .then((userCredential) => {
+                    window.currentUserId = userCredential.user.uid;
+                    console.log("Firebase authenticated anonymously:", window.currentUserId);
+                    const script = document.createElement('script');
+                    script.src = 'login.js';
+                    document.body.appendChild(script);
+                })
+                .catch((error) => {
+                    console.error("Error signing in anonymously:", error);
+                    alert("Greška pri inicijalizaciji autentifikacije. Aplikacija možda neće raditi ispravno.");
+                });
+        }
+    </script>
 </body>
 </html>
